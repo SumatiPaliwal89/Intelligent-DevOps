@@ -8,6 +8,8 @@ from mem0 import MemoryClient
 from agent.tools_semgrep import run_semgrep, read_file_snippet, remediation_hint
 from agent.github_utils import clone_repo, delete_repo
 from agent.tools_semgrep import run_semgrep
+from agent.iac_scanner import run_checkov_scan
+
 
 
 load_dotenv()
@@ -225,3 +227,110 @@ async def scan_github_repo(req: GithubScanRequest):
             delete_repo(repo_path)
 
 
+from agent.iac_scanner import run_checkov_scan
+
+
+@app.post("/scan-iac")
+async def scan_iac_repo(req: GithubScanRequest):
+    """Clone a GitHub repo, run IaC scan with Checkov, and delete it after analysis."""
+
+    repo_path = None
+
+    try:
+        # 1️⃣ Clone GitHub repo
+        repo_path = clone_repo(req.repo_url)
+
+        if not os.path.exists(repo_path):
+            raise HTTPException(status_code=500, detail="Failed to clone repository")
+
+        # 2️⃣ Run Checkov IaC scan
+        iac_scan_result = run_checkov_scan(repo_path)
+
+        if "error" in iac_scan_result:
+            raise HTTPException(status_code=500, detail=iac_scan_result["error"])
+
+        failed_checks = iac_scan_result.get("results", {}).get("failed_checks", [])
+        passed_checks = iac_scan_result.get("results", {}).get("passed_checks", [])
+
+        summary_text = f"{len(failed_checks)} IaC misconfigurations found"
+
+        # 3️⃣ AI summary (optional like before)
+        failed_checks = iac_scan_result.get("results", {}).get("failed_checks", [])
+
+        try:
+            llm_summary = analyze_vulnerabilities(failed_checks)
+        except Exception as e:
+            llm_summary = f"⚠ AI summary unavailable: {str(e)}"
+
+        stored = 0
+
+        # 4️⃣ Store IaC findings in Mem0
+        for check in failed_checks:
+            file_path = check.get("file_path", "")
+            resource = check.get("resource", "")
+            severity = check.get("severity", "UNKNOWN")
+            check_name = check.get("check_name", "")
+            check_id = check.get("check_id", "")
+            guideline = check.get("guideline", "")
+
+            content = (
+                f"IaC security misconfiguration in {file_path}\n"
+                f"Resource: {resource}\n"
+                f"Check: {check_name} ({check_id})\n"
+                f"Severity: {severity}\n"
+                f"Guideline: {guideline}"
+            )
+
+            messages = [
+                {"role": "user", "content": f"IaC scan report for {file_path}"},
+                {"role": "assistant", "content": content}
+            ]
+
+            try:
+                memory_client.add(
+                    messages=messages,
+                    user_id="ai_code_scanner",
+                    filters={
+                        "repo": os.path.basename(repo_path),
+                        "file": file_path,
+                        "severity": severity,
+                        "rule_id": check_id,
+                        "type": "iac"
+                    }
+                )
+                stored += 1
+            except Exception as e:
+                print(f"Mem0 storage error (IaC): {e}")
+
+        # 5️⃣ Fetch related previous IaC scans
+        related = []
+        try:
+            related = memory_client.search(
+                query=os.path.basename(repo_path),
+                user_id="ai_code_scanner",
+                filters={"repo": os.path.basename(repo_path), "type": "iac"},
+                limit=3
+            )
+        except Exception as e:
+            print(f"Mem0 search error (IaC): {e}")
+
+        return {
+            "status": "success",
+            "repository": os.path.basename(repo_path),
+            "summary": summary_text,
+            "llm_analysis": llm_summary,
+            "stored_in_mem0": stored,
+            "failed_checks": failed_checks,
+            "passed_checks_count": len(passed_checks),
+            "related_previous_scans": related
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        # 6️⃣ Always delete cloned repo
+        if repo_path:
+            delete_repo(repo_path)
+
+    
