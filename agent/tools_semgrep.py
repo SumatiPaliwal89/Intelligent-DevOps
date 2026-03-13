@@ -35,8 +35,11 @@ def run_semgrep(target_dir: str, rule_dir: str = "rules") -> Dict[str, Any]:
             env=env
         )
 
-        print(f"STDOUT:\n{proc.stdout[:300]}")
-        print(f"STDERR:\n{proc.stderr[:300]}")
+        try:
+            print(f"STDOUT:\n{proc.stdout[:300]}".encode("ascii", "replace").decode("ascii"))
+            print(f"STDERR:\n{proc.stderr[:300]}".encode("ascii", "replace").decode("ascii"))
+        except Exception:
+            pass
 
         if proc.returncode not in (0, 1):
             return {"error": f"Semgrep failed (code {proc.returncode}): {proc.stderr}"}
