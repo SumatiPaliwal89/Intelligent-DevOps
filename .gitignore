@@ -1,21 +1,45 @@
-# 🔒 Virtual environments
+# Virtual environments
 .venv/
 venv/
 
-# 🔐 Environment variables (API keys)
+# Environment variables (API keys)
 .env
+.env.local
+.env.*.local
 
-# 🐍 Python cache
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# 🧪 Logs
+# Logs
 *.log
 
-# 🖥 OS generated files
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# 🔍 Semgrep outputs
-*.json
+# Semgrep / Checkov scan outputs
 *.sarif
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Claude internal state
+.claude/
+
+# Temporary repos (GitHub scans)
+temp_repos/
+
+# Scan results / test artifacts
+results/
+
+# Frontend build output
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/PASS
