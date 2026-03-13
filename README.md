@@ -2,6 +2,13 @@
 
 AI-powered security scanner using Semgrep (code) and Checkov (IaC), with Gemini 2.5 Flash analysis and a React dashboard.
 
+## DEMO
+
+
+
+https://github.com/user-attachments/assets/36eb2153-aa4c-4007-b56d-fae5be21f92d
+
+
 ## Stack
 
 - **Backend** — FastAPI, Semgrep, Checkov, Gemini 2.5 Flash, Mem0
