@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API Base URL - change this if backend runs on different port
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -14,7 +14,7 @@ const apiClient = axios.create({
 
 // Longer timeouts for scan endpoints
 const SCAN_TIMEOUT_CODE = 300000;  // 5 min  — code scans
-const SCAN_TIMEOUT_IAC  = 900000;  // 15 min — IaC scans (Checkov on large Terraform repos)
+const SCAN_TIMEOUT_IAC = 900000;  // 15 min — IaC scans (Checkov on large Terraform repos)
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
