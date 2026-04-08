@@ -1,26 +1,24 @@
-# Web Framework
-fastapi==0.115.0
-uvicorn[standard]==0.32.0
+# Web Framework (STRICT pin)
+fastapi==0.110.0
+starlette==0.36.3
+uvicorn==0.29.0
 pydantic==2.10.6
 
-# LLM Integration - Google Gemini (FREE tier: 1500 req/day)
+# LLM Integration
 langchain-google-genai==2.0.5
 langchain-core==0.3.28
-google-generativeai>=0.7.0,<0.9.0
+langchain==0.3.0
 
-# Memory & Storage
+# google-generativeai>=0.7.0,<0.9.0
+
+# ADD THIS instead
+google-genai==0.3.0
+
+# Memory
 mem0ai==0.1.29
 
-# Security Scanning Tools
-# Note: Install these separately:
-# pip install semgrep
-# pip install checkov
-
-# Git Operations
+# Git
 GitPython==3.1.43
 
-# Utilities
+# Utils
 python-dotenv==1.0.1
-
-# Optional: Enhanced Agent Framework
-langchain==0.3.0
