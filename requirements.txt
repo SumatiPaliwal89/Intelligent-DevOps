@@ -1,6 +1,6 @@
-# Web Framework (STRICT pin)
-fastapi==0.110.0
-starlette==0.36.3
+# Web Framework
+fastapi==0.135.3
+starlette==1.0.0
 uvicorn==0.29.0
 pydantic==2.10.6
 
@@ -22,3 +22,7 @@ GitPython==3.1.43
 
 # Utils
 python-dotenv==1.0.1
+
+# Scanners
+semgrep
+checkov

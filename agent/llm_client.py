@@ -14,8 +14,6 @@ from typing import List, Dict, Optional
 import json
 import os
 import time
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage
 
 
 class SecurityAnalyzer:
@@ -40,6 +38,7 @@ class SecurityAnalyzer:
     def _init_llm(self):
         """Initialize the Gemini LLM client"""
         try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
             self.llm = ChatGoogleGenerativeAI(
                 model=self.model,
                 temperature=self.temperature,
@@ -160,6 +159,7 @@ Keep the entire response under 40 lines. No emojis. Plain markdown only."""
             return self._generate_clean_report(context)
 
         # Prepare prompts
+        from langchain_core.messages import SystemMessage, HumanMessage
         system_prompt = SystemMessage(content=self._get_system_prompt(analysis_type))
         user_prompt = HumanMessage(content=self._get_user_prompt(findings, analysis_type))
 

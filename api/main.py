@@ -1,5 +1,3 @@
-from agent.llm_client import analyze_vulnerabilities
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
@@ -7,10 +5,6 @@ import os, json, re, uuid
 from datetime import datetime
 from typing import Optional
 from dotenv import load_dotenv
-from mem0 import MemoryClient
-from agent.tools_semgrep import run_semgrep, read_file_snippet, remediation_hint
-from agent.github_utils import clone_repo, delete_repo
-from agent.iac_scanner import run_checkov_scan
 
 load_dotenv()
 
@@ -30,10 +24,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-memory_client = MemoryClient(api_key=os.getenv("MEM0_API_KEY", ""))
-
 # In-memory scan status tracker  {scan_id: {...}}
 _active_scans: dict = {}
+
+# Lazy singleton for MemoryClient — created only on first use
+_memory_client = None
+
+def get_memory_client():
+    global _memory_client
+    if _memory_client is None:
+        from mem0 import MemoryClient
+        _memory_client = MemoryClient(api_key=os.getenv("MEM0_API_KEY", ""))
+    return _memory_client
 
 GITHUB_URL_RE = re.compile(
     r'^https?://(www\.)?github\.com/[\w.\-]+/[\w.\-]+(\.git)?/?$'
@@ -69,6 +71,8 @@ def sanitize_for_json(text: str) -> str:
 
 def _store_findings_in_mem0(results: list, repo_name: str, scan_type: str = "code") -> int:
     """Store scan findings in Mem0 memory. Returns count stored."""
+    from agent.tools_semgrep import read_file_snippet
+    memory_client = get_memory_client()
     stored = 0
     for r in results:
         try:
@@ -121,7 +125,7 @@ def _store_findings_in_mem0(results: list, repo_name: str, scan_type: str = "cod
 
 def _fetch_related(repo_name: str, scan_type: str = "code") -> list:
     try:
-        return memory_client.search(
+        return get_memory_client().search(
             query=repo_name,
             user_id="ai_code_scanner",
             limit=3,
@@ -159,7 +163,7 @@ async def health_check():
         status["gemini"] = f"error: {str(e)[:100]}"
 
     try:
-        memory_client.search(query="health_check", user_id="ai_code_scanner", limit=1)
+        get_memory_client().search(query="health_check", user_id="ai_code_scanner", limit=1)
         status["mem0"] = "ok"
     except Exception as e:
         status["mem0"] = f"error: {str(e)[:100]}"
@@ -172,7 +176,7 @@ async def health_check():
 async def get_scan_history(limit: int = 20):
     """Retrieve past scan results from Mem0."""
     try:
-        memories = memory_client.get_all(user_id="ai_code_scanner", limit=limit)
+        memories = get_memory_client().get_all(user_id="ai_code_scanner", limit=limit)
         history = [
             {
                 "id": m.get("id"),
@@ -198,6 +202,7 @@ async def get_scan_status(scan_id: str):
 @app.post("/scan")
 async def scan_local_path(req: ScanRequest):
     """Run Semgrep on a local path."""
+    from agent.tools_semgrep import run_semgrep
     scan_id = str(uuid.uuid4())[:8]
     _active_scans[scan_id] = {"scan_id": scan_id, "status": "running", "started_at": datetime.utcnow().isoformat()}
     try:
@@ -244,6 +249,8 @@ async def scan_local_path(req: ScanRequest):
 @app.post("/scan-github")
 async def scan_github_repo(req: GithubScanRequest):
     """Clone a GitHub repo, run Semgrep, return AI analysis, then delete clone."""
+    from agent.tools_semgrep import run_semgrep
+    from agent.github_utils import clone_repo, delete_repo
     scan_id = str(uuid.uuid4())[:8]
     _active_scans[scan_id] = {
         "scan_id": scan_id, "status": "running",
@@ -300,6 +307,8 @@ async def scan_github_repo(req: GithubScanRequest):
 @app.post("/scan-iac")
 async def scan_iac_repo(req: GithubScanRequest):
     """Clone a GitHub repo, run Checkov IaC scan, return AI analysis, then delete clone."""
+    from agent.iac_scanner import run_checkov_scan
+    from agent.github_utils import clone_repo, delete_repo
     scan_id = str(uuid.uuid4())[:8]
     _active_scans[scan_id] = {
         "scan_id": scan_id, "status": "running",

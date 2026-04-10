@@ -1,7 +1,6 @@
 import os
 import shutil
 import stat
-from git import Repo
 
 BASE_DIR = "temp_repos"
 
@@ -16,6 +15,7 @@ def clone_repo(repo_url: str):
     # Remove old copy if exists (safe delete for Windows)
     delete_repo(repo_path)
 
+    from git import Repo
     Repo.clone_from(repo_url, repo_path)
     return repo_path
 
